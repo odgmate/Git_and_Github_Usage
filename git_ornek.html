@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git Bash Pratik — VS Code Simülasyonu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0d1117;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+:root{
+  --vsc-bg:#1e1e1e;--vsc-sidebar:#252526;--vsc-titlebar:#3c3c3c;
+  --vsc-tab-active:#1e1e1e;--vsc-tab-inactive:#2d2d2d;--vsc-tab-border:#007acc;
+  --vsc-text:#d4d4d4;--vsc-muted:#858585;--vsc-blue:#569cd6;--vsc-green:#4ec9b0;
+  --vsc-yellow:#dcdcaa;--vsc-orange:#ce9178;--vsc-pink:#c586c0;
+  --vsc-comment:#6a9955;--vsc-red:#f44747;--vsc-white:#ffffff;
+  --vsc-statusbar:#007acc;--vsc-border:#3c3c3c;
+  --git-main:#4ec9b0;--git-feat:#c586c0;--git-fix:#f9c74f;--git-remote:#569cd6;
+}
+.vscode-window{
+  background:var(--vsc-bg);border-radius:10px;overflow:hidden;
+  border:1px solid #555;font-size:11px;width:100%;max-width:1200px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.7);
+}
+.titlebar{
+  background:var(--vsc-titlebar);height:32px;display:flex;align-items:center;
+  padding:0 14px;justify-content:space-between;
+}
+.traffic-lights{display:flex;gap:7px;}
+.dot{width:13px;height:13px;border-radius:50%;}
+.dot-red{background:#ff5f57;}.dot-yellow{background:#febc2e;}.dot-green{background:#28c840;}
+.titlebar-text{color:var(--vsc-muted);font-size:12px;font-family:'Inter',sans-serif;}
+.activity-bar{
+  width:46px;background:#333;display:flex;flex-direction:column;
+  align-items:center;padding-top:10px;gap:4px;flex-shrink:0;
+}
+.ab-icon{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:5px;cursor:pointer;color:var(--vsc-muted);font-size:17px;transition:color .15s;
+}
+.ab-icon.active{color:var(--vsc-white);border-left:2px solid var(--vsc-blue);}
+.ab-icon:hover{color:var(--vsc-text);}
+.main-area{display:flex;flex:1;overflow:hidden;}
+.editor-area{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+.tabs-bar{background:#2d2d2d;display:flex;border-bottom:1px solid var(--vsc-border);flex-shrink:0;}
+.tab{
+  padding:7px 16px;font-size:12px;cursor:pointer;border-right:1px solid var(--vsc-border);
+  white-space:nowrap;display:flex;align-items:center;gap:7px;color:var(--vsc-muted);transition:background .1s;
+  font-family:'Inter',sans-serif;
+}
+.tab.active{background:var(--vsc-tab-active);color:var(--vsc-text);border-top:2px solid var(--vsc-tab-border);padding-top:5px;}
+.tab:hover:not(.active){background:#353535;}
+.tab-dot{width:7px;height:7px;border-radius:50%;}
+.content-panel{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.panel-section{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.panel-section.visible{display:flex;}
+.git-graph-container{flex:1;overflow-y:auto;background:var(--vsc-bg);}
+.git-graph-header{
+  display:grid;grid-template-columns:240px 1fr 130px 90px;
+  padding:5px 12px;border-bottom:1px solid var(--vsc-border);
+  font-size:10px;color:var(--vsc-muted);text-transform:uppercase;letter-spacing:.08em;
+  position:sticky;top:0;background:#252526;z-index:5;font-family:'Inter',sans-serif;
+}
+.git-row{
+  display:grid;grid-template-columns:240px 1fr 130px 90px;
+  padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);
+  align-items:center;cursor:pointer;transition:background .1s;
+}
+.git-row:hover{background:rgba(255,255,255,.05);}
+.git-row .msg-cell{font-size:12px;color:var(--vsc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 10px;}
+.git-row .author-cell{font-size:11px;color:var(--vsc-muted);padding:0 4px;font-family:'Inter',sans-serif;}
+.git-row .hash-cell{font-size:11px;color:var(--vsc-blue);font-family:'JetBrains Mono',monospace;padding-right:10px;}
+.branch-badge{
+  display:inline-flex;align-items:center;padding:1px 7px;border-radius:3px;
+  font-size:10px;font-weight:500;margin-right:5px;white-space:nowrap;font-family:'Inter',sans-serif;
+}
+.badge-main{background:rgba(78,201,176,.2);color:var(--git-main);border:1px solid rgba(78,201,176,.4);}
+.badge-origin{background:rgba(86,156,214,.2);color:var(--git-remote);border:1px solid rgba(86,156,214,.4);}
+.badge-feat{background:rgba(197,134,192,.2);color:var(--git-feat);border:1px solid rgba(197,134,192,.4);}
+.badge-head{background:rgba(0,122,204,.35);color:#7ec8f7;border:1px solid rgba(0,122,204,.6);}
+.terminal-container{
+  flex:1;overflow-y:auto;background:var(--vsc-bg);
+  padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;
+}
+.term-line{display:flex;flex-wrap:wrap;gap:0;}
+.term-prompt{color:var(--git-main);user-select:none;}
+.term-path{color:var(--vsc-blue);}
+.term-branch{color:var(--git-feat);}
+.term-cmd{color:var(--vsc-text);margin-left:4px;}
+.term-output{color:var(--vsc-muted);margin-left:18px;display:block;}
+.term-success{color:var(--vsc-comment);margin-left:18px;display:block;}
+.term-error{color:var(--vsc-red);margin-left:18px;display:block;}
+.term-section{
+  color:var(--git-main);margin:12px 0 5px;border-left:2px solid var(--git-main);
+  padding-left:9px;font-weight:700;font-size:11px;letter-spacing:.05em;display:block;
+}
+.cursor{
+  display:inline-block;width:8px;height:15px;background:var(--vsc-text);
+  vertical-align:text-bottom;animation:blink 1.1s step-end infinite;margin-left:2px;
+}
+@keyframes blink{50%{opacity:0;}}
+.statusbar{
+  height:24px;background:var(--vsc-statusbar);display:flex;align-items:center;
+  padding:0 12px;font-size:12px;color:white;gap:18px;flex-shrink:0;
+  font-family:'Inter',sans-serif;
+}
+.sb-item{display:flex;align-items:center;gap:5px;}
+.proj-selector{
+  background:#2d2d2d;border-bottom:1px solid var(--vsc-border);
+  display:flex;gap:3px;padding:5px 10px;flex-wrap:wrap;flex-shrink:0;
+}
+.proj-btn{
+  padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;
+  font-family:'JetBrains Mono',monospace;border:1px solid transparent;
+  color:var(--vsc-muted);background:transparent;transition:all .15s;
+}
+.proj-btn:hover{background:#3c3c3c;color:var(--vsc-text);}
+.proj-btn.active{background:#094771;color:#7ec8f7;border-color:rgba(0,122,204,.5);}
+.split-view{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+.upper-panel{height:300px;overflow:hidden;display:flex;flex-direction:column;border-bottom:2px solid var(--vsc-border);flex-shrink:0;}
+.lower-panel{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:220px;}
+.panel-title{
+  background:#252526;padding:5px 14px;font-size:10px;color:var(--vsc-muted);
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--vsc-border);
+  display:flex;align-items:center;gap:7px;flex-shrink:0;font-family:'Inter',sans-serif;
+}
+svg.graph-svg{overflow:visible;}
+</style>
+</head>
+<body>
+
+<div class="vscode-window">
+  <div class="titlebar">
+    <div class="traffic-lights">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+    </div>
+    <div class="titlebar-text">git_bash_pratik.docx — Git Bash Pratik — Visual Studio Code</div>
+    <div style="width:70px"></div>
+  </div>
+
+  <div style="display:flex;height:680px;">
+    <div class="activity-bar">
+      <div class="ab-icon active" title="Explorer">&#128190;</div>
+      <div class="ab-icon" title="Search">&#128269;</div>
+      <div class="ab-icon" title="Source Control">&#10003;</div>
+      <div class="ab-icon" title="Extensions">&#9632;</div>
+    </div>
+
+    <div class="main-area" style="flex:1;overflow:hidden;flex-direction:column;display:flex;">
+      <div class="tabs-bar">
+        <div class="tab active" onclick="showTab('graph')">
+          <div class="tab-dot" style="background:var(--git-main)"></div>
+          Git Graph
+        </div>
+        <div class="tab" onclick="showTab('terminal')">
+          <div class="tab-dot" style="background:var(--vsc-blue)"></div>
+          Terminal
+        </div>
+        <div class="tab" onclick="showTab('split')">
+          <div class="tab-dot" style="background:var(--git-feat)"></div>
+          Birlikte Gör
+        </div>
+      </div>
+
+      <div class="proj-selector" id="projSelector"></div>
+
+      <div class="content-panel">
+        <div class="panel-section visible" id="panel-graph">
+          <div class="git-graph-container" id="gitGraphContainer"></div>
+        </div>
+        <div class="panel-section" id="panel-terminal">
+          <div class="terminal-container" id="terminalContent"></div>
+        </div>
+        <div class="panel-section" id="panel-split">
+          <div class="split-view">
+            <div class="upper-panel">
+              <div class="panel-title">&#9632; Git Graph</div>
+              <div class="git-graph-container" id="splitGraphContainer"></div>
+            </div>
+            <div class="lower-panel">
+              <div class="panel-title">&#9656; Terminal</div>
+              <div class="terminal-container" id="splitTerminalContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="statusbar">
+        <div class="sb-item">&#10003; main</div>
+        <div class="sb-item" id="sbBranch"></div>
+        <div class="sb-item">Git Bash Pratik</div>
+        <div class="sb-item" style="margin-left:auto">UTF-8 &nbsp; LF &nbsp; Türkçe</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECTS=[
+  {id:"p1",label:"Proje 1",name:"İlk Repo & Commit",branch:"main",
+   commits:[
+    {hash:"a1b2c3d",msg:"README güncellendi: üçüncü satır",branches:["HEAD","main"],author:"Sen",date:"bugün",col:0,parents:["e4f5g6h"]},
+    {hash:"e4f5g6h",msg:"İlk commit: README eklendi",branches:[],author:"Sen",date:"bugün",col:0,parents:[]},
+   ],
+   steps:[
+    {cmd:'git config --global user.name "Ad Soyad"',out:[],desc:"Kullanıcı adı ayarlandı."},
+    {cmd:'git config --global user.email "mail@example.com"',out:[],desc:"E-posta ayarlandı."},
+    {cmd:"mkdir ilk-proje && cd ilk-proje",out:[],desc:"Klasör oluşturuldu."},
+    {cmd:"git init",out:["Initialized empty Git repository in /ilk-proje/.git/"],desc:"Repo başlatıldı."},
+    {cmd:'echo "# İlk Projem" > README.md',out:[],desc:"README oluşturuldu."},
+    {cmd:'echo "İkinci satır" >> README.md',out:[],desc:"İkinci satır eklendi."},
+    {cmd:"git status",out:["On branch main","Untracked files:","  README.md"],desc:"Durum kontrol."},
+    {cmd:"git add .",out:[],desc:"Staging'e alındı."},
+    {cmd:'git commit -m "İlk commit: README eklendi"',out:["[main (root-commit) e4f5g6h] İlk commit: README eklendi","1 file changed, 2 insertions(+)"],desc:"İlk commit."},
+    {cmd:'echo "Üçüncü satır" >> README.md',out:[],desc:"Üçüncü satır eklendi."},
+    {cmd:'git add . && git commit -m "README güncellendi"',out:["[main a1b2c3d] README güncellendi: üçüncü satır"],desc:"İkinci commit."},
+    {cmd:"git log",out:["commit a1b2c3d (HEAD -> main)","Author: Sen <mail@example.com>","    README güncellendi: üçüncü satır","","commit e4f5g6h","    İlk commit: README eklendi"],desc:"Geçmiş görüntülendi."},
+   ]
+  },
+  {id:"p2",label:"Proje 2",name:"Branch & Merge",branch:"main",
+   commits:[
+    {hash:"m5n6o7p",msg:"Merge branch 'ozellik/login'",branches:["HEAD","main"],author:"Sen",date:"bugün",col:0,parents:["r8s9t0u","q2w3e4r"]},
+    {hash:"q2w3e4r",msg:"Login sayfası eklendi",branches:["ozellik/login"],author:"Sen",date:"bugün",col:1,parents:["i1j2k3l"]},
+    {hash:"r8s9t0u",msg:"(main devam etti)",branches:[],author:"Sen",date:"bugün",col:0,parents:["i1j2k3l"],ghost:true},
+    {hash:"i1j2k3l",msg:"İlk commit: index.html",branches:[],author:"Sen",date:"bugün",col:0,parents:[]},
+   ],
+   steps:[
+    {cmd:"git init && git add . && git commit -m \"İlk commit\"",out:["[main i1j2k3l] İlk commit: index.html"],desc:""},
+    {cmd:"git branch",out:["* main"],desc:"Tek branch."},
+    {cmd:"git checkout -b ozellik/login",out:["Switched to a new branch 'ozellik/login'"],desc:"Yeni branch açıldı."},
+    {cmd:'echo "Login formu" > login.html && git add . && git commit -m "Login sayfası eklendi"',out:["[ozellik/login q2w3e4r] Login sayfası eklendi"],desc:""},
+    {cmd:"git branch -vv",out:["* ozellik/login q2w3e4r Login sayfası eklendi","  main        i1j2k3l İlk commit: index.html"],desc:""},
+    {cmd:"git checkout main",out:["Switched to branch 'main'"],desc:"Ana branch'e dön."},
+    {cmd:"git merge ozellik/login",out:["Merge made by the 'ort' strategy.","1 file changed, 1 insertion(+)","[main m5n6o7p] Merge branch 'ozellik/login'"],desc:"Merge tamamlandı."},
+    {cmd:"git branch -d ozellik/login",out:["Deleted branch ozellik/login (was q2w3e4r)."],desc:"Branch silindi."},
+    {cmd:"git log --oneline",out:["m5n6o7p (HEAD -> main) Merge branch 'ozellik/login'","q2w3e4r Login sayfası eklendi","i1j2k3l İlk commit: index.html"],desc:""},
+   ]
+  },
+  {id:"p3",label:"Proje 3",name:"Remote Push/Pull",branch:"main",
+   commits:[
+    {hash:"u5v6w7x",msg:"README güncellendi",branches:["HEAD","main","origin/main"],author:"Sen",date:"bugün",col:0,parents:["y8z9a1b"]},
+    {hash:"y8z9a1b",msg:"İlk commit",branches:[],author:"Sen",date:"bugün",col:0,parents:[]},
+   ],
+   steps:[
+    {cmd:"git init && echo '# Remote' > README.md && git add . && git commit -m \"İlk commit\"",out:["[main y8z9a1b] İlk commit"],desc:""},
+    {cmd:"git remote add origin https://github.com/kullanici/repo.git",out:[],desc:"Remote eklendi."},
+    {cmd:"git remote -v",out:["origin  https://github.com/kullanici/repo.git (fetch)","origin  https://github.com/kullanici/repo.git (push)"],desc:""},
+    {cmd:"git push --set-upstream origin main",out:["Branch 'main' set up to track remote branch 'main' from 'origin'.","To https://github.com/kullanici/repo.git","  * [new branch]  main -> origin/main"],desc:"Push + upstream ayarlandı."},
+    {cmd:'echo "Değişiklik" >> README.md && git add . && git commit -m "README güncellendi"',out:["[main u5v6w7x] README güncellendi"],desc:""},
+    {cmd:"git push origin main",out:["To https://github.com/kullanici/repo.git","  y8z9a1b..u5v6w7x  main -> main"],desc:"İkinci push."},
+    {cmd:"git fetch",out:["From https://github.com/kullanici/repo.git","  * branch  main -> FETCH_HEAD"],desc:"Fetch (birleştirmez)."},
+    {cmd:"git pull origin main",out:["Already up to date."],desc:"Pull (fetch+merge)."},
+    {cmd:"git branch -vv",out:["* main u5v6w7x [origin/main] README güncellendi"],desc:"Upstream OK."},
+   ]
+  },
+  {id:"p4",label:"Proje 4",name:"Revert & Checkout",branch:"main",
+   commits:[
+    {hash:"rev1234",msg:"Revert \"v2: Hatalı değişiklik\"",branches:["HEAD","main"],author:"Sen",date:"bugün",col:0,parents:["ver3333"]},
+    {hash:"ver3333",msg:"v3: Ek değişiklik",branches:[],author:"Sen",date:"bugün",col:0,parents:["ver2222"]},
+    {hash:"ver2222",msg:"v2: Hatalı değişiklik",branches:[],author:"Sen",date:"bugün",col:0,parents:["ver1111"],danger:true},
+    {hash:"ver1111",msg:"v1: Doğru kod",branches:[],author:"Sen",date:"bugün",col:0,parents:[]},
+   ],
+   steps:[
+    {cmd:"git init && echo 'Doğru kod' > app.py && git add . && git commit -m \"v1: Doğru kod\"",out:["[main ver1111] v1: Doğru kod"],desc:""},
+    {cmd:"echo 'Hatalı kod' >> app.py && git add . && git commit -m \"v2: Hatalı değişiklik\"",out:["[main ver2222] v2: Hatalı değişiklik"],desc:"Hata commit."},
+    {cmd:"echo 'Başka değişiklik' >> app.py && git add . && git commit -m \"v3: Ek değişiklik\"",out:["[main ver3333] v3: Ek değişiklik"],desc:""},
+    {cmd:"git log --oneline",out:["ver3333 (HEAD -> main) v3: Ek değişiklik","ver2222 v2: Hatalı değişiklik","ver1111 v1: Doğru kod"],desc:""},
+    {cmd:"git revert HEAD",out:["[main rev1234] Revert \"v2: Hatalı değişiklik\"","1 file changed, 1 deletion(-)"],desc:"Revert yeni commit oluşturdu."},
+    {cmd:"git log --oneline",out:["rev1234 (HEAD -> main) Revert \"v2: Hatalı değişiklik\"","ver3333 v3: Ek değişiklik","ver2222 v2: Hatalı değişiklik","ver1111 v1: Doğru kod"],desc:"4 commit görünür."},
+    {cmd:"git checkout main",out:["Already on 'main'"],desc:""},
+   ]
+  },
+  {id:"p5",label:"Proje 5",name:"Takım İş Akışı",branch:"main",
+   commits:[
+    {hash:"push111",msg:"Merge: kullanıcı profil sayfası",branches:["HEAD","main","origin/main"],author:"Sen",date:"bugün",col:0,parents:["prof222","base333"]},
+    {hash:"prof222",msg:"feat: kullanıcı profil sayfası",branches:["ozellik/kullanici-profili","origin/ozellik/kullanici-profili"],author:"Sen",date:"bugün",col:1,parents:["base333"]},
+    {hash:"base333",msg:"Klonlandıktan sonra (pull)",branches:[],author:"Takım",date:"dün",col:0,parents:["init444"]},
+    {hash:"init444",msg:"Proje başlangıcı (clone)",branches:[],author:"Takım",date:"dün",col:0,parents:[]},
+   ],
+   steps:[
+    {cmd:"git clone https://github.com/kullanici/takim-projesi.git",out:["Cloning into 'takim-projesi'...","remote: Counting objects: 4, done.","Resolving deltas: 100% (1/1), done."],desc:"Klonlandı."},
+    {cmd:"cd takim-projesi",out:[],desc:""},
+    {cmd:"git pull origin main",out:["Already up to date."],desc:"Güncel."},
+    {cmd:"git checkout -b ozellik/kullanici-profili",out:["Switched to a new branch 'ozellik/kullanici-profili'"],desc:""},
+    {cmd:'echo "Profil" > profil.html && echo "CSS" > profil.css',out:[],desc:"Dosyalar oluşturuldu."},
+    {cmd:'git add . && git commit -m "feat: kullanıcı profil sayfası eklendi"',out:["[ozellik/kullanici-profili prof222] feat: kullanıcı profil sayfası eklendi"],desc:""},
+    {cmd:"git push --set-upstream origin ozellik/kullanici-profili",out:["Branch 'ozellik/kullanici-profili' set up to track remote.","  * [new branch] ozellik/kullanici-profili -> origin/ozellik/kullanici-profili"],desc:"Push + upstream."},
+    {cmd:"git checkout main && git pull origin main",out:["Switched to branch 'main'","Already up to date."],desc:""},
+    {cmd:"git merge ozellik/kullanici-profili",out:["Merge made by the 'ort' strategy."],desc:"Merge."},
+    {cmd:"git push origin main",out:["To https://github.com/kullanici/takim-projesi.git","  base333..push111  main -> main"],desc:"Son push."},
+    {cmd:"git log --oneline && git branch -vv",out:["push111 (HEAD -> main, origin/main) Merge: kullanıcı profil sayfası","prof222 feat: kullanıcı profil sayfası eklendi","base333 Klonlandıktan sonra","init444 Proje başlangıcı"],desc:""},
+   ]
+  }
+];
+
+let currentProject=0,currentTab='graph';
+
+function showTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.panel-section').forEach(p=>p.classList.remove('visible'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('visible');
+  const tabs=['graph','terminal','split'];
+  document.querySelectorAll('.tab').forEach((t,i)=>{if(tabs[i]===tab)t.classList.add('active');});
+  renderAll();
+}
+
+function selectProject(idx){
+  currentProject=idx;
+  document.querySelectorAll('.proj-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.getElementById('sbBranch').textContent='⎇ '+PROJECTS[idx].branch;
+  renderAll();
+}
+
+function renderAll(){
+  const proj=PROJECTS[currentProject];
+  if(currentTab==='graph')renderGraph(proj,'gitGraphContainer');
+  if(currentTab==='terminal')renderTerminal(proj,'terminalContent');
+  if(currentTab==='split'){renderGraph(proj,'splitGraphContainer');renderTerminal(proj,'splitTerminalContent');}
+}
+
+function renderGraph(proj,containerId){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  const commits=proj.commits;
+  const rowH=34,nodeR=7,colW=20,leftPad=14;
+  const maxCol=Math.max(...commits.map(c=>c.col||0));
+  const svgW=leftPad+(maxCol+1)*colW+nodeR+6;
+  const colors=['#4ec9b0','#c586c0','#f9c74f','#569cd6','#f08080'];
+  let html=`<div class="git-graph-header"><div style="padding-left:${svgW+10}px">Commit Mesajı</div><div>Yazar</div><div>Hash</div></div>`;
+  const svgLines=[`<svg class="graph-svg" width="${svgW}" height="${commits.length*rowH}" style="position:absolute;top:0;left:0;">`];
+  commits.forEach((commit,i)=>{
+    const cy=i*rowH+rowH/2,cx=leftPad+(commit.col||0)*colW;
+    const color=colors[(commit.col||0)%colors.length];
+    commit.parents.forEach(ph=>{
+      const pi=commits.findIndex(c=>c.hash===ph);
+      if(pi<0)return;
+      const parent=commits[pi];
+      const py=pi*rowH+rowH/2,pcx=leftPad+(parent.col||0)*colW;
+      if(cx===pcx){
+        svgLines.push(`<line x1="${cx}" y1="${cy}" x2="${pcx}" y2="${py}" stroke="${color}" stroke-width="2" opacity="0.7"/>`);
+      }else{
+        const midY=(cy+py)/2;
+        svgLines.push(`<path d="M${cx},${cy} L${cx},${midY-10} Q${cx},${midY} ${(cx+pcx)/2},${midY} Q${pcx},${midY} ${pcx},${midY+10} L${pcx},${py}" fill="none" stroke="${color}" stroke-width="2" opacity="0.7"/>`);
+      }
+    });
+  });
+  commits.forEach((commit,i)=>{
+    const cy=i*rowH+rowH/2,cx=leftPad+(commit.col||0)*colW;
+    const color=colors[(commit.col||0)%colors.length];
+    if(commit.ghost){
+      svgLines.push(`<circle cx="${cx}" cy="${cy}" r="${nodeR-2}" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="1"/>`);
+    }else if(commit.danger){
+      svgLines.push(`<rect x="${cx-nodeR}" y="${cy-nodeR}" width="${nodeR*2}" height="${nodeR*2}" rx="3" fill="#f44747" stroke="#ff8888" stroke-width="1.5"/>`);
+    }else{
+      svgLines.push(`<circle cx="${cx}" cy="${cy}" r="${nodeR}" fill="${color}" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>`);
+      if(commit.branches&&commit.branches.some(b=>b==='HEAD')){
+        svgLines.push(`<circle cx="${cx}" cy="${cy}" r="${nodeR+4}" fill="none" stroke="${color}" stroke-width="1" opacity="0.45"/>`);
+      }
+    }
+  });
+  svgLines.push('</svg>');
+  html+=`<div style="position:relative;">${svgLines.join('')}`;
+  commits.forEach((commit,i)=>{
+    if(commit.ghost)return;
+    const isRev=commit.msg.startsWith('Revert');
+    let badges='';
+    if(commit.branches){
+      commit.branches.forEach(b=>{
+        if(b==='HEAD')badges+=`<span class="branch-badge badge-head">HEAD</span>`;
+        else if(b.startsWith('origin/'))badges+=`<span class="branch-badge badge-origin">${b}</span>`;
+        else if(b==='main')badges+=`<span class="branch-badge badge-main">main</span>`;
+        else badges+=`<span class="branch-badge badge-feat">${b}</span>`;
+      });
+    }
+    html+=`<div class="git-row" style="padding-left:${svgW+6}px;background:${isRev?'rgba(78,201,176,0.06)':''}">
+      <div class="msg-cell">${badges}<span style="color:${isRev?'var(--git-main)':commit.msg.startsWith('feat')?'var(--git-feat)':'var(--vsc-text)'}">${esc(commit.msg)}</span></div>
+      <div class="author-cell">${esc(commit.author)}</div>
+      <div class="hash-cell">${commit.hash.slice(0,7)}</div>
+    </div>`;
+  });
+  html+='</div>';
+  container.innerHTML=html;
+}
+
+function renderTerminal(proj,containerId){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  let html=`<span class="term-section">── ${esc(proj.name.toUpperCase())} ── ${proj.steps.length} ADIM ──</span>`;
+  proj.steps.forEach(step=>{
+    html+=`<div class="term-line">
+      <span class="term-prompt">┌──(Sen㉿dev)</span><span class="term-path">~/proje</span><span class="term-branch"> git:(${esc(proj.branch)})</span>
+    </div>
+    <div class="term-line">
+      <span class="term-prompt">└─</span><span style="color:var(--vsc-yellow)">$ </span><span class="term-cmd">${esc(step.cmd)}</span>
+    </div>`;
+    step.out.forEach(o=>{
+      const isErr=o.includes('error')||o.includes('CONFLICT');
+      const isOk=/^\[main|^\[ozellik|To https/.test(o);
+      html+=`<span class="${isErr?'term-error':isOk?'term-success':'term-output'}">${esc(o)}</span>`;
+    });
+    if(step.desc)html+=`<span style="color:var(--vsc-comment);margin-left:18px;display:block;font-style:italic;font-size:10px">// ${esc(step.desc)}</span>`;
+    html+=`<div style="height:5px"></div>`;
+  });
+  html+=`<div class="term-line" style="margin-top:10px">
+    <span class="term-prompt">└─</span><span style="color:var(--vsc-yellow)">$ </span><span class="cursor"></span>
+  </div>`;
+  container.innerHTML=html;
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const sel=document.getElementById('projSelector');
+PROJECTS.forEach((p,i)=>{
+  const btn=document.createElement('button');
+  btn.className='proj-btn'+(i===0?' active':'');
+  btn.textContent=p.label+': '+p.name;
+  btn.onclick=()=>selectProject(i);
+  sel.appendChild(btn);
+});
+selectProject(0);
+</script>
+</body>
+</html>
